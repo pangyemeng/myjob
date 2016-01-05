@@ -1,0 +1,14 @@
+{
+  "db_type": "mysql",
+  "ip": "127.0.0.1",
+  "nonsql_port": 6379,
+  "db_name": "myjob",
+  "db_user": "root",
+  "db_pwd": "root",
+  "sql_port":3306,
+  "queue_max":1,
+  "thread_max":4,
+  "project_name": "job_linux_c",
+  "keywords": "linux c",
+  "locate": "040000"
+}
