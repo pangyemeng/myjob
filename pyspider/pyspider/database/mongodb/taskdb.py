@@ -18,7 +18,6 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
 
     def __init__(self, url, database='taskdb'):
         self.conn = MongoClient(url)
-        self.conn.admin.command("ismaster")
         self.database = self.conn[database]
         self.projects = set()
 
@@ -26,7 +25,6 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
         for project in self.projects:
             collection_name = self._collection_name(project)
             self.database[collection_name].ensure_index('status')
-            self.database[collection_name].ensure_index('taskid')
 
     def _parse(self, data):
         if '_id' in data:
@@ -58,7 +56,7 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
 
         for project in projects:
             collection_name = self._collection_name(project)
-            for task in self.database[collection_name].find({'status': status}, fields):
+            for task in self.database[collection_name].find({'status': status}, fields=fields):
                 yield self._parse(task)
 
     def get_task(self, project, taskid, fields=None):
@@ -67,7 +65,7 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
         if project not in self.projects:
             return
         collection_name = self._collection_name(project)
-        ret = self.database[collection_name].find_one({'taskid': taskid}, fields)
+        ret = self.database[collection_name].find_one({'taskid': taskid}, fields=fields)
         if not ret:
             return ret
         return self._parse(ret)
@@ -87,10 +85,10 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
             }
             }])
         result = {}
-        if isinstance(ret, dict):
-            ret = ret.get('result', [])
-        for each in ret:
-            result[each['_id']] = each['total']
+        if ret.get('result'):
+            for each in ret['result']:
+                result[each['_id']] = each['total']
+            return result
         return result
 
     def insert(self, project, taskid, obj={}):

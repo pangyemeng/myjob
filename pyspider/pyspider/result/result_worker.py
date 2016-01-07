@@ -19,11 +19,26 @@ class ResultWorker(object):
     override this if needed.
     """
 
-    def __init__(self, resultdb, inqueue):
+    def __init__(self, resultdb, inqueue, job):
         self.resultdb = resultdb
         self.inqueue = inqueue
+        self.job = job
         self._quit = False
-
+        
+    def push_job(self, task, result):
+        '''51job result push redis queue'''
+        if not result:
+            return
+        if 'taskid' in task and 'project' in task and 'url' in task:
+            logger.info('result %s:%s %s -> %.30r' % (
+                task['project'], task['taskid'], task['url'], result))
+            result_buffer = "c_name:" + result['c_name'] + "||||" + "c_head:" + result['c_head'] + "||||" + "c_introduce:" + result['c_introduce'] + "||||" + "c_mainpage:" + result['c_mainpage'] + "||||" + "p_name:" + result['p_name'] + "||||" + "p_head:"+ result['p_head']  + "||||" + "p_body:" + result['p_body']   
+            print result_buffer
+            self.job.push(result_buffer)
+        else:
+            logger.warning('result UNKNOW -> %.30r' % result)
+            return
+        
     def on_result(self, task, result):
         '''Called every result'''
         if not result:
@@ -31,12 +46,16 @@ class ResultWorker(object):
         if 'taskid' in task and 'project' in task and 'url' in task:
             logger.info('result %s:%s %s -> %.30r' % (
                 task['project'], task['taskid'], task['url'], result))
-            return self.resultdb.save(
+            ret = task['url'].find('c.html');
+            if (ret != -1):
+               return self.resultdb.save(
                 project=task['project'],
                 taskid=task['taskid'],
                 url=task['url'],
                 result=result
             )
+            else:
+                return
         else:
             logger.warning('result UNKNOW -> %.30r' % result)
             return
@@ -51,7 +70,8 @@ class ResultWorker(object):
         while not self._quit:
             try:
                 task, result = self.inqueue.get(timeout=1)
-                self.on_result(task, result)
+                self.push_job(task, result)
+              #  self.on_result(task, result)
             except Queue.Empty as e:
                 continue
             except KeyboardInterrupt:

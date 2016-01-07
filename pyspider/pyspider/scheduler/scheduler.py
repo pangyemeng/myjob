@@ -11,12 +11,12 @@ import json
 import time
 import logging
 import itertools
+from six.moves import queue as Queue
 from collections import deque
 
 from six import iteritems, itervalues
 
 from pyspider.libs import counter, utils
-from six.moves import queue as Queue
 from .task_queue import TaskQueue
 logger = logging.getLogger('scheduler')
 
@@ -36,13 +36,6 @@ class Scheduler(object):
     INQUEUE_LIMIT = 0
     EXCEPTION_LIMIT = 3
     DELETE_TIME = 24 * 60 * 60
-    DEFAULT_RETRY_DELAY = {
-        0: 30,
-        1: 1*60*60,
-        2: 6*60*60,
-        3: 12*60*60,
-        '': 24*60*60
-    }
 
     def __init__(self, taskdb, projectdb, newtask_queue, status_queue,
                  out_queue, data_path='./data', resultdb=None):
@@ -118,7 +111,7 @@ class Scheduler(object):
                 'url': 'data:,_on_get_info',
                 'status': self.taskdb.SUCCESS,
                 'fetch': {
-                    'save': ['min_tick', 'retry_delay'],
+                    'save': ['min_tick', ],
                 },
                 'process': {
                     'callback': '_on_get_info',
@@ -548,7 +541,7 @@ class Scheduler(object):
             result = []
 
             while len(result) < limit and tasks and not all(x is None for x in tasks):
-                updatetime, task = t = max(t for t in tasks if t)
+                updatetime, task = t = max(tasks)
                 i = tasks.index(t)
                 tasks[i] = next(iters[i], None)
                 for key in list(task):
@@ -683,18 +676,17 @@ class Scheduler(object):
 
         retries = task['schedule'].get('retries', self.default_schedule['retries'])
         retried = task['schedule'].get('retried', 0)
-
-        project_info = self.projects.get(task['project'], {})
-        retry_delay = project_info.get('retry_delay', None) or self.DEFAULT_RETRY_DELAY
-        next_exetime = retry_delay.get(retried, retry_delay.get('', self.DEFAULT_RETRY_DELAY['']))
+        if retried == 0:
+            next_exetime = 0
+        elif retried == 1:
+            next_exetime = 1 * 60 * 60
+        else:
+            next_exetime = 6 * (2 ** retried) * 60 * 60
 
         if task['schedule'].get('auto_recrawl') and 'age' in task['schedule']:
             next_exetime = min(next_exetime, task['schedule'].get('age'))
-        else:
-            if retried >= retries:
-                next_exetime = -1
-            elif 'age' in task['schedule'] and next_exetime > task['schedule'].get('age'):
-                next_exetime = task['schedule'].get('age')
+        elif retried >= retries:
+            next_exetime = -1
 
         if next_exetime < 0:
             task['status'] = self.taskdb.FAILED

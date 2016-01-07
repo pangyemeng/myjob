@@ -6,6 +6,7 @@
 # Created on 2014-12-04 18:48:47
 
 import time
+from sqlalchemy.engine import reflection
 
 
 def result2dict(columns, task):
@@ -43,7 +44,8 @@ class SplitTableMixin(object):
         else:
             prefix = ''
 
-        for project in self.engine.table_names():
+        insp = reflection.Inspector.from_engine(self.engine)
+        for project in insp.get_table_names():
             if project.startswith(prefix):
                 project = project[len(prefix):]
                 self.projects.add(project)

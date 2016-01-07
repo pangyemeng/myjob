@@ -17,7 +17,7 @@ from pyspider.libs import utils
 from pyspider.libs.log import LogFormatter
 from pyspider.libs.utils import pretty_unicode, hide_me
 from pyspider.libs.response import rebuild_response
-from .project_module import ProjectManager, ProjectFinder
+from .project_module import ProjectManager, ProjectLoader, ProjectFinder
 
 
 class ProcessorResult(object):
@@ -90,8 +90,15 @@ class Processor(object):
 
         `from project import project_name`
         '''
-        if six.PY2:
-            sys.meta_path.append(ProjectFinder(self.projectdb))
+        _self = self
+
+        class ProcessProjectFinder(ProjectFinder):
+
+            def get_loader(self, name):
+                info = _self.projectdb.get(name)
+                if info:
+                    return ProjectLoader(info)
+        sys.meta_path.append(ProcessProjectFinder())
 
     def __del__(self):
         pass
@@ -168,8 +175,7 @@ class Processor(object):
         # FIXME: unicode_obj should used in scheduler before store to database
         # it's used here for performance.
         if ret.follows:
-            for each in (ret.follows[x:x + 1000] for x in range(0, len(ret.follows), 1000)):
-                self.newtask_queue.put([utils.unicode_obj(newtask) for newtask in each])
+            self.newtask_queue.put([utils.unicode_obj(newtask) for newtask in ret.follows])
 
         for project, msg, url in ret.messages:
             try:

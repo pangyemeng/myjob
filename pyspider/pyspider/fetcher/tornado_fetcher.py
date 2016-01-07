@@ -175,7 +175,7 @@ class Fetcher(object):
         self.on_result(type, task, result)
         return task, result
 
-    allowed_options = ['method', 'data', 'timeout', 'cookies', 'use_gzip', 'validate_cert']
+    allowed_options = ['method', 'data', 'timeout', 'cookies', 'use_gzip']
 
     def http_fetch(self, url, task, callback):
         '''HTTP fetcher'''
@@ -184,7 +184,6 @@ class Fetcher(object):
         self.on_fetch('http', task)
         fetch = copy.deepcopy(self.default_options)
         fetch['url'] = url
-        fetch['headers'] = tornado.httputil.HTTPHeaders(fetch['headers'])
         fetch['headers']['User-Agent'] = self.user_agent
         task_fetch = task.get('fetch', {})
         for each in self.allowed_options:
@@ -229,8 +228,8 @@ class Fetcher(object):
                 _t = task_fetch.get('etag')
             elif track_ok:
                 _t = track_headers.get('etag')
-            if _t and 'If-None-Match' not in fetch['headers']:
-                fetch['headers']['If-None-Match'] = _t
+            if _t:
+                fetch['headers'].setdefault('If-None-Match', _t)
         # last modifed
         if task_fetch.get('last_modified', True):
             _t = None
@@ -238,18 +237,16 @@ class Fetcher(object):
                 _t = task_fetch.get('last_modifed')
             elif track_ok:
                 _t = track_headers.get('last-modified')
-            if _t and 'If-Modified-Since' not in fetch['headers']:
-                fetch['headers']['If-Modified-Since'] = _t
+            if _t:
+                fetch['headers'].setdefault('If-Modified-Since', _t)
 
         session = cookies.RequestsCookieJar()
 
         # fix for tornado request obj
+        fetch['headers'] = tornado.httputil.HTTPHeaders(fetch['headers'])
         if 'Cookie' in fetch['headers']:
             c = http_cookies.SimpleCookie()
-            try:
-                c.load(fetch['headers']['Cookie'])
-            except AttributeError:
-                c.load(utils.utf8(fetch['headers']['Cookie']))
+            c.load(fetch['headers']['Cookie'])
             for key in c:
                 session.set(key, c[key])
             del fetch['headers']['Cookie']
@@ -363,7 +360,6 @@ class Fetcher(object):
 
         fetch = copy.deepcopy(self.default_options)
         fetch['url'] = url
-        fetch['headers'] = tornado.httputil.HTTPHeaders(fetch['headers'])
         fetch['headers']['User-Agent'] = self.user_agent
         task_fetch = task.get('fetch', {})
         for each in task_fetch:
@@ -408,7 +404,6 @@ class Fetcher(object):
         handle_error = lambda x: self.handle_error('phantomjs',
                                                    url, task, start_time, callback, x)
 
-        fetch['headers'] = dict(fetch['headers'])
         try:
             request = tornado.httpclient.HTTPRequest(
                 url="%s" % self.phantomjs_proxy, method="POST",

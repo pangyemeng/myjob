@@ -6,7 +6,6 @@
 # Created on 2014-02-22 14:00:05
 
 import os
-import six
 import copy
 import time
 import unittest2 as unittest
@@ -165,7 +164,7 @@ class TestProjectModule(unittest.TestCase):
             'project': self.project,
             'url': 'data:,_on_get_info',
             'fetch': {
-                'save': ['min_tick', 'retry_delay'],
+                'save': ['min_tick', ],
             },
             'process': {
                 'callback': '_on_get_info',
@@ -175,11 +174,10 @@ class TestProjectModule(unittest.TestCase):
         fetch_result['save'] = task['fetch']['save']
 
         ret = self.instance.run_task(self.module, task, fetch_result)
-        self.assertEqual(len(ret.save), 2, ret.logstr())
+        self.assertEqual(len(ret.save), 1, ret.logstr())
         for each in ret.follows:
             self.assertEqual(each['url'], 'data:,on_get_info')
             self.assertEqual(each['fetch']['save']['min_tick'], 10)
-            self.assertEqual(each['fetch']['save']['retry_delay'], {})
 
     def test_30_generator(self):
         self.base_task['process']['callback'] = 'generator'
@@ -189,9 +187,9 @@ class TestProjectModule(unittest.TestCase):
 
 import shutil
 import inspect
+from multiprocessing import Queue
 from pyspider.database.sqlite import projectdb
 from pyspider.processor.processor import Processor
-from pyspider.libs.multiprocessing_queue import Queue
 from pyspider.libs.utils import run_in_thread
 from pyspider.libs import sample_handler
 
@@ -491,34 +489,3 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(status['track']['process']['ok'], False)
 
         self.processor.project_manager.CHECK_PROJECTS_INTERVAL = 0.1
-
-    @unittest.skipIf(six.PY3, "deprecated feature, not work for PY3")
-    def test_80_import_project(self):
-        self.projectdb.insert('test_project2', {
-            'name': 'test_project',
-            'group': 'group',
-            'status': 'TODO',
-            'script': inspect.getsource(sample_handler),
-            'comments': 'test project',
-            'rate': 1.0,
-            'burst': 10,
-        })
-        self.projectdb.insert('test_project3', {
-            'name': 'test_project',
-            'group': 'group',
-            'status': 'TODO',
-            'script': inspect.getsource(sample_handler),
-            'comments': 'test project',
-            'rate': 1.0,
-            'burst': 10,
-        })
-
-        from projects import test_project
-        self.assertIsNotNone(test_project)
-        self.assertIsNotNone(test_project.Handler)
-
-        from projects.test_project2 import Handler
-        self.assertIsNotNone(Handler)
-
-        import projects.test_project3
-        self.assertIsNotNone(projects.test_project3.Handler)

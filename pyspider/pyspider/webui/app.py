@@ -16,13 +16,14 @@ from six.moves.urllib.parse import urljoin
 from flask import Flask
 from pyspider.fetcher import tornado_fetcher
 
+
 if os.name == 'nt':
     import mimetypes
     mimetypes.add_type("text/css", ".css", True)
 
 
-class QuitableFlask(Flask):
-    """Add quit() method to Flask object"""
+class TornadoFlask(Flask):
+    """Flask object running with tornado ioloop"""
 
     @property
     def logger(self):
@@ -42,6 +43,7 @@ class QuitableFlask(Flask):
         if debug is not None:
             self.debug = bool(debug)
 
+        #run_simple(host, port, self, **options)
         hostname = host
         port = port
         application = self
@@ -51,17 +53,6 @@ class QuitableFlask(Flask):
         if use_debugger:
             from werkzeug.debug import DebuggedApplication
             application = DebuggedApplication(application, True)
-
-        try:
-            from .webdav import dav_app
-        except ImportError as e:
-            logger.error('WebDav interface not enabled: %r', e)
-            dav_app = None
-        if dav_app:
-            from werkzeug.wsgi import DispatcherMiddleware
-            application = DispatcherMiddleware(application, {
-                '/dav': dav_app
-            })
 
         def inner():
             self.server = make_server(hostname, port, application)
@@ -84,9 +75,9 @@ class QuitableFlask(Flask):
         self.logger.info('webui exiting...')
 
 
-app = QuitableFlask('webui',
-                    static_folder=os.path.join(os.path.dirname(__file__), 'static'),
-                    template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
+app = TornadoFlask('webui',
+                   static_folder=os.path.join(os.path.dirname(__file__), 'static'),
+                   template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 app.secret_key = os.urandom(24)
 app.jinja_env.line_statement_prefix = '#'
 app.jinja_env.globals.update(builtins.__dict__)

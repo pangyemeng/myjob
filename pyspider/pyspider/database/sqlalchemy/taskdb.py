@@ -9,14 +9,17 @@ import re
 import six
 import time
 import json
-import sqlalchemy.exc
 
 from sqlalchemy import (create_engine, MetaData, Table, Column, Index,
-                        Integer, String, Float, LargeBinary, func)
-from sqlalchemy.engine.url import make_url
+                        Integer, String, Float, LargeBinary, sql, func)
 from pyspider.libs import utils
 from pyspider.database.base.taskdb import TaskDB as BaseTaskDB
 from .sqlalchemybase import SplitTableMixin, result2dict
+
+if six.PY3:
+    where_type = utils.utf8
+else:
+    where_type = utils.text
 
 
 class TaskDB(SplitTableMixin, BaseTaskDB):
@@ -34,23 +37,8 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
                            Column('track', LargeBinary),
                            Column('lastcrawltime', Float(32)),
                            Column('updatetime', Float(32)),
-                           mysql_engine='InnoDB',
-                           mysql_charset='utf8'
                            )
-
-        self.url = make_url(url)
-        if self.url.database:
-            database = self.url.database
-            self.url.database = None
-            try:
-                engine = create_engine(self.url)
-                conn = engine.connect()
-                conn.execute("commit")
-                conn.execute("CREATE DATABASE %s" % database)
-            except sqlalchemy.exc.SQLAlchemyError:
-                pass
-            self.url.database = database
-        self.engine = create_engine(url)
+        self.engine = create_engine(url, convert_unicode=True)
 
         self._list_project()
 
@@ -60,7 +48,7 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
             return
         self.table.name = self._tablename(project)
         Index('status_%s_index' % self.table.name, self.table.c.status)
-        self.table.create(self.engine, checkfirst=True)
+        self.table.create(self.engine)
         self.table.indexes.clear()
 
     @staticmethod
@@ -82,7 +70,11 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
     def _stringify(data):
         for each in ('schedule', 'fetch', 'process', 'track'):
             if each in data:
-                data[each] = utils.utf8(json.dumps(data[each]))
+                data[each] = json.dumps(data[each])
+        if six.PY3:
+            for key, value in list(six.iteritems(data)):
+                if isinstance(value, six.string_types):
+                    data[key] = utils.utf8(value)
         return data
 
     def load_tasks(self, status, project=None, fields=None):
@@ -113,7 +105,7 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
         for each in self.engine.execute(self.table.select()
                                         .with_only_columns(columns)
                                         .limit(1)
-                                        .where(self.table.c.taskid == taskid)):
+                                        .where(self.table.c.taskid == where_type(taskid))):
             return self._parse(result2dict(columns, each))
 
     def status_count(self, project):
@@ -155,5 +147,5 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
         obj.update(kwargs)
         obj['updatetime'] = time.time()
         return self.engine.execute(self.table.update()
-                                   .where(self.table.c.taskid == taskid)
+                                   .where(self.table.c.taskid == where_type(taskid))
                                    .values(**self._stringify(obj)))

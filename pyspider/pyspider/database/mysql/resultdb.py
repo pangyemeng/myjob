@@ -63,7 +63,7 @@ class ResultDB(MySQLMixin, SplitTableMixin, BaseResultDB, BaseDB):
         obj = {
             'taskid': taskid,
             'url': url,
-            'result': result,
+            'result': result['content'],
             'updatetime': time.time(),
         }
         return self._replace(tablename, **self._stringify(obj))

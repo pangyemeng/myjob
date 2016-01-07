@@ -33,7 +33,7 @@ def connect_message_queue(name, url=None, maxsize=0):
     """
 
     if not url:
-        from pyspider.libs.multiprocessing_queue import Queue
+        from multiprocessing import Queue
         return Queue(maxsize=maxsize)
 
     parsed = urlparse.urlparse(url)
@@ -50,10 +50,8 @@ def connect_message_queue(name, url=None, maxsize=0):
             db = int(db[0])
         except:
             db = 0
-
-        password = parsed.password or None
-
-        return Queue(name, parsed.hostname, parsed.port, db=db, maxsize=maxsize, password=password)
+        #print "---------" + name + "-------------"
+        return Queue(name, parsed.hostname, parsed.port, db=db, maxsize=maxsize)
     else:
         if url.startswith('kombu+'):
             url = url[len('kombu+'):]

@@ -30,9 +30,9 @@ class TestWebUI(unittest.TestCase):
         self.httpbin = 'http://127.0.0.1:14887'
 
         ctx = run.cli.make_context('test', [
-            '--taskdb', 'sqlalchemy+sqlite+taskdb:///data/tests/task.db',
-            '--projectdb', 'sqlalchemy+sqlite+projectdb:///data/tests/projectdb.db',
-            '--resultdb', 'sqlalchemy+sqlite+resultdb:///data/tests/resultdb.db',
+            '--taskdb', 'sqlite+taskdb:///data/tests/task.db',
+            '--projectdb', 'sqlite+projectdb:///data/tests/projectdb.db',
+            '--resultdb', 'sqlite+resultdb:///data/tests/resultdb.db',
         ], None, obj=ObjectDict(testing_mode=True))
         self.ctx = run.cli.invoke(ctx)
 
@@ -41,12 +41,8 @@ class TestWebUI(unittest.TestCase):
         run_in_thread(scheduler.xmlrpc_run)
         run_in_thread(scheduler.run)
 
-        ctx = run.fetcher.make_context('fetcher', [
-            '--xmlrpc',
-            '--xmlrpc-port', '24444',
-        ], self.ctx)
+        ctx = run.fetcher.make_context('fetcher', [], self.ctx)
         fetcher = run.fetcher.invoke(ctx)
-        run_in_thread(fetcher.xmlrpc_run)
         run_in_thread(fetcher.run)
 
         ctx = run.processor.make_context('processor', [], self.ctx)
@@ -130,26 +126,6 @@ class TestWebUI(unittest.TestCase):
         self.assertGreater(len(data['follows']), 0)
         self.__class__.task_content2 = data['follows'][0]
 
-    def test_32_run_bad_task(self):
-        rv = self.app.post('/debug/test_project/run', data={
-            'script': self.script_content,
-            'task': self.task_content+'asdfasdf312!@#'
-        })
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(utils.text(rv.data))
-        self.assertGreater(len(data['logs']), 0)
-        self.assertEqual(len(data['follows']), 0)
-
-    def test_33_run_bad_script(self):
-        rv = self.app.post('/debug/test_project/run', data={
-            'script': self.script_content+'adfasfasdf',
-            'task': self.task_content
-        })
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(utils.text(rv.data))
-        self.assertGreater(len(data['logs']), 0)
-        self.assertEqual(len(data['follows']), 0)
-
     def test_35_run_http_task(self):
         rv = self.app.post('/debug/test_project/run', data={
             'script': self.script_content,
@@ -157,7 +133,7 @@ class TestWebUI(unittest.TestCase):
         })
         self.assertEqual(rv.status_code, 200)
         data = json.loads(utils.text(rv.data))
-        self.assertIn('follows', data)
+        self.assertIn(b'follows', rv.data)
 
     def test_40_save(self):
         rv = self.app.post('/debug/test_project/save', data={
@@ -165,25 +141,6 @@ class TestWebUI(unittest.TestCase):
         })
         self.assertEqual(rv.status_code, 200)
         self.assertIn(b'ok', rv.data)
-
-    def test_42_get(self):
-        rv = self.app.get('/debug/test_project/get')
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(utils.text(rv.data))
-        self.assertIn('script', data)
-        self.assertEqual(data['script'], self.script_content)
-
-    def test_45_run_with_saved_script(self):
-        rv = self.app.post('/debug/test_project/run', data={
-            'webdav_mode': 'true',
-            'script': '',
-            'task': self.task_content
-        })
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(utils.text(rv.data))
-        self.assertIn(b'follows', rv.data)
-        self.assertGreater(len(data['follows']), 0)
-        self.__class__.task_content2 = data['follows'][0]
 
     def test_50_index_page_list(self):
         rv = self.app.get('/')
@@ -350,37 +307,6 @@ class TestWebUI(unittest.TestCase):
         rv = self.app.get('/results/dump/test_project.csv')
         self.assertEqual(rv.status_code, 200)
         self.assertIn(b'url,title,url', rv.data)
-
-    def test_a60_fetch_via_cannot_connect_fetcher(self):
-        ctx = run.webui.make_context('webui', [
-            '--fetcher-rpc', 'http://localhost:20000/',
-        ], self.ctx)
-        app = run.webui.invoke(ctx)
-        app = app.test_client()
-        rv = app.post('/debug/test_project/run', data={
-            'script': self.script_content,
-            'task': self.task_content
-        })
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(utils.text(rv.data))
-        self.assertGreater(len(data['logs']), 0)
-        self.assertEqual(len(data['follows']), 0)
-
-    def test_a70_fetch_via_fetcher(self):
-        ctx = run.webui.make_context('webui', [
-            '--fetcher-rpc', 'http://localhost:24444/',
-        ], self.ctx)
-        app = run.webui.invoke(ctx)
-        app = app.test_client()
-        rv = app.post('/debug/test_project/run', data={
-            'script': self.script_content,
-            'task': self.task_content
-        })
-        self.assertEqual(rv.status_code, 200)
-        data = json.loads(utils.text(rv.data))
-        self.assertEqual(len(data['logs']), 0, data['logs'])
-        self.assertIn(b'follows', rv.data)
-        self.assertGreater(len(data['follows']), 0)
 
     def test_h000_auth(self):
         ctx = run.webui.make_context('webui', [

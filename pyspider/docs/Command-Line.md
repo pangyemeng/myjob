@@ -228,20 +228,15 @@ phantomjs
 ---------
 
 ```
-Usage: run.py phantomjs [OPTIONS] [ARGS]...
+Usage: pyspider phantomjs [OPTIONS]
 
   Run phantomjs fetcher if phantomjs is installed.
 
 Options:
   --phantomjs-path TEXT  phantomjs path
   --port INTEGER         phantomjs port
-  --auto-restart TEXT    auto restart phantomjs if crashed
   --help                 Show this message and exit.
 ```
-
-#### ARGS
-
-Addition args pass to phantomjs command line.
 
 fetcher
 -------

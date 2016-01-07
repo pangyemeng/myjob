@@ -95,9 +95,9 @@ try:
     from six.moves import xmlrpc_client
 except ImportError:
     import xmlrpclib as xmlrpc_client
+from multiprocessing import Queue
 from pyspider.scheduler.scheduler import Scheduler
 from pyspider.database.sqlite import taskdb, projectdb, resultdb
-from pyspider.libs.multiprocessing_queue import Queue
 from pyspider.libs.utils import run_in_thread
 
 
@@ -138,8 +138,7 @@ class TestScheduler(unittest.TestCase):
             scheduler.UPDATE_PROJECT_INTERVAL = 0.1
             scheduler.LOOP_INTERVAL = 0.1
             scheduler.INQUEUE_LIMIT = 10
-            scheduler.DELETE_TIME = 0
-            scheduler.DEFAULT_RETRY_DELAY = {'': 5}
+            Scheduler.DELETE_TIME = 0
             scheduler._last_tick = int(time.time())  # not dispatch cronjob
             run_in_thread(scheduler.xmlrpc_run, port=self.scheduler_xmlrpc_port)
             scheduler.run()
@@ -188,19 +187,6 @@ class TestScheduler(unittest.TestCase):
         self.assertIsNotNone(task)
         self.assertEqual(task['url'], 'data:,_on_get_info')
 
-    def test_34_new_not_used_project(self):
-        self.projectdb.insert('test_project_not_started', {
-            'name': 'test_project_not_started',
-            'group': 'group',
-            'status': 'RUNNING',
-            'script': 'import time\nprint(time.time())',
-            'comments': 'test project',
-            'rate': 1.0,
-            'burst': 10,
-        })
-        task = self.scheduler2fetcher.get(timeout=1)
-        self.assertEqual(task['taskid'], '_on_get_info')
-
     def test_35_new_task(self):
         time.sleep(0.2)
         self.newtask_queue.put({
@@ -235,7 +221,7 @@ class TestScheduler(unittest.TestCase):
             'project': 'test_project',
             'url': 'url_force_update',
             'schedule': {
-                'age': 10,
+                'age': 0,
                 'force_update': True,
             },
         })
@@ -282,10 +268,7 @@ class TestScheduler(unittest.TestCase):
                 },
             }
         })
-        from six.moves import queue as Queue
-        with self.assertRaises(Queue.Empty):
-            task = self.scheduler2fetcher.get(timeout=4)
-        task = self.scheduler2fetcher.get(timeout=5)
+        task = self.scheduler2fetcher.get(timeout=10)
         self.assertIsNotNone(task)
 
     def test_70_taskdone_ok(self):
@@ -396,7 +379,7 @@ class TestScheduler(unittest.TestCase):
                 },
             }
         })
-        task = self.scheduler2fetcher.get(timeout=5)
+        task = self.scheduler2fetcher.get(timeout=10)
         self.assertIsNotNone(task)
 
         self.status_queue.put({

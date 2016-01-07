@@ -13,36 +13,29 @@ import umsgpack
 import threading
 
 import amqp
+from six.moves import queue as BaseQueue
 from six.moves.urllib.parse import unquote
 try:
     from urllib import parse as urlparse
 except ImportError:
     import urlparse
-from six.moves import queue as BaseQueue
 
 
 def catch_error(func):
     """Catch errors of rabbitmq then reconnect"""
     import amqp
-    try:
-        import pika.exceptions
-        connect_exceptions = (
-            pika.exceptions.ConnectionClosed,
-            pika.exceptions.AMQPConnectionError,
-        )
-    except ImportError:
-        connect_exceptions = ()
-
-    connect_exceptions += (
-        select.error,
-        socket.error,
-        amqp.ConnectionError
-    )
+    import pika.exceptions
 
     def wrap(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
-        except connect_exceptions as e:
+        except (
+                select.error,
+                socket.error,
+                pika.exceptions.ConnectionClosed,
+                pika.exceptions.AMQPConnectionError,
+                amqp.ConnectionError
+        ) as e:
             logging.error('RabbitMQ error: %r, reconnect.', e)
             self.reconnect()
             return func(self, *args, **kwargs)

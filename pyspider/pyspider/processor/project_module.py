@@ -10,7 +10,6 @@ import six
 import sys
 import imp
 import time
-import weakref
 import logging
 import inspect
 import traceback
@@ -155,35 +154,24 @@ class ProjectManager(object):
 class ProjectFinder(object):
     '''ProjectFinder class for sys.meta_path'''
 
-    def __init__(self, projectdb):
-        self.get_projectdb = weakref.ref(projectdb)
-
-    @property
-    def projectdb(self):
-        return self.get_projectdb()
-
     def find_module(self, fullname, path=None):
         if fullname == 'projects':
-            return self
+            return ProjectsLoader()
         parts = fullname.split('.')
         if len(parts) == 2 and parts[0] == 'projects':
-            name = parts[1]
-            if not self.projectdb:
-                return
-            info = self.projectdb.get(name)
-            if info:
-                return ProjectLoader(info)
+            return self.get_loader(parts[1])
+
+
+class ProjectsLoader(object):
+    '''ProjectsLoader class for sys.meta_path package'''
 
     def load_module(self, fullname):
-        mod = imp.new_module(fullname)
+        mod = sys.modules.setdefault('projects', imp.new_module(fullname))
         mod.__file__ = '<projects>'
         mod.__loader__ = self
-        mod.__path__ = ['<projects>']
+        mod.__path__ = []
         mod.__package__ = 'projects'
         return mod
-
-    def is_package(self, fullname):
-        return True
 
 
 class ProjectLoader(object):
@@ -196,9 +184,10 @@ class ProjectLoader(object):
 
     def load_module(self, fullname):
         if self.mod is None:
-            self.mod = mod = imp.new_module(fullname)
+            mod = self.mod = imp.new_module(self.name)
         else:
             mod = self.mod
+
         mod.__file__ = '<%s>' % self.name
         mod.__loader__ = self
         mod.__project__ = self.project

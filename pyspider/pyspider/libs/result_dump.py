@@ -16,7 +16,6 @@ from six import iteritems
 def result_formater(results):
     common_fields = None
     for result in results:
-        result.setdefault('result', None)
         if isinstance(result['result'], dict):
             if common_fields is None:
                 common_fields = set(result['result'].keys())
@@ -40,7 +39,7 @@ def result_formater(results):
                     others[key] = value
             result['result_formated'] = result_formated
             result['others'] = others
-    return common_fields or set(), results
+    return common_fields or [], results
 
 
 def dump_as_json(results, valid=False):
@@ -64,8 +63,8 @@ def dump_as_json(results, valid=False):
 def dump_as_txt(results):
     for result in results:
         yield (
-            result.get('url', None) + '\t' +
-            json.dumps(result.get('result', None), ensure_ascii=False) + '\n'
+            result['url'] + '\t' +
+            json.dumps(result['result'], ensure_ascii=False) + '\n'
         )
 
 

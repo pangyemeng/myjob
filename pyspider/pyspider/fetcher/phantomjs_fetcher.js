@@ -48,17 +48,9 @@ if (system.args.length !== 2) {
 
     // create and set page
     var page = webpage.create();
-    page.onConsoleMessage = function(msg) {
-        console.log('console: ' + msg);
-    };
     page.viewportSize = {
       width: fetch.js_viewport_width || 1024,
       height: fetch.js_viewport_height || 768*3
-    }
-    if (fetch.headers) {
-      fetch.headers['Accept-Encoding'] = undefined;
-      fetch.headers['Connection'] = undefined;
-      fetch.headers['Content-Length'] = undefined;
     }
     if (fetch.headers && fetch.headers['User-Agent']) {
       page.settings.userAgent = fetch.headers['User-Agent'];
@@ -173,10 +165,6 @@ if (system.args.length !== 2) {
     }
 
     function _make_result(page) {
-      if (first_response === null) {
-        throw "No response received!";
-      }
-
       var cookies = {};
       page.cookies.forEach(function(e) {
         cookies[e.name] = e.value;
