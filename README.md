@@ -14,5 +14,6 @@
 说明：最近熟悉了elasticsearch等相关开发，想修改一下程序结构。主要修改如下：将爬取的数据进行提取，然后直接封装成json格式，调用
 elasticsearch接口插入elasticsearch中。好处：elasticsearch有分词功能，这样进行数据分析和统计更加方便和简单。
 
-# 更新
-再次查看pyspider版本已经发现已经支持elasticsearch。
+# 更新记录
+20171127 再次查看pyspider版本已经发现已经支持elasticsearch。
+20171128 更新pyspider版本；调试连接elasticsearch；
