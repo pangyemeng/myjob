@@ -48,7 +48,7 @@ def connect_database(url):
 
 def _connect_database(url):  # NOQA
     parsed = urlparse(url)
-
+    
     scheme = parsed.scheme.split('+')
     if len(scheme) == 1:
         raise Exception('wrong scheme format: %s' % parsed.scheme)
@@ -154,6 +154,7 @@ def _connect_database(url):  # NOQA
             raise LookupError('not supported dbtype: %s', dbtype)
     elif engine == 'elasticsearch' or engine == 'es':
         # in python 2.6 url like "http://host/?query", query will not been splitted
+        
         if parsed.path.startswith('/?'):
             index = parse_qs(parsed.path[2:])
         else:
