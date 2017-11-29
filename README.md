@@ -17,3 +17,4 @@ elasticsearch接口插入elasticsearch中。好处：elasticsearch有分词功�
 # 更新记录
 20171127 再次查看pyspider版本已经发现已经支持elasticsearch。
 20171128 更新pyspider版本；调试连接elasticsearch；
+20171129 修改config下的配置文件，每个数据库对应一个索引；调通eleasticsearch结构，可以利用pyspider进行抓取任务；
